@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkers Bot</title>
+<style>
+td{
+    height: 50px ;
+    width: 50px ;
+    text-align: center;
+    padding: 0px;
+    font-size: 30px;
+    vertical-align: middle;
+    border: 1px solid black;
+}
+</style>
+</head>
+
+<body>
+    <button onclick='window.location.replace("cvc.html"); return false;'>test computer against computer</button>
+    <button onclick='window.location.replace("pvc.html"); return false;'>test player against computer</button>
+<script>
+function l(...args){
+    console.log(...args)
+}
+
+function element(tagName, innerHTML = "", id = null, appendTo = document.body) {
+    const element = document.createElement(tagName);
+    if (id) element.id = id;
+
+    // Handle innerHTML as an array
+    const innerHTMLArray = Array.isArray(innerHTML) ? innerHTML : [innerHTML];
+
+    if (typeof appendTo !== "string") {
+        element.innerHTML = innerHTMLArray[0] || "";
+        appendTo.appendChild(element);
+    } else {
+        const elements = document.querySelectorAll(appendTo);
+        for (let i = 0; i < elements.length; i++) {
+            const newElement = element.cloneNode(true);
+            newElement.innerHTML = innerHTMLArray[i] || "";
+            newElement.id = id ? id + i : null;
+            elements[i].appendChild(newElement);
+        }
+    }
+
+    return element;
+}
+
+let game = {
+    board: "boardStart",
+    boardStart: [//x, X, o, O, and " " are coded for occupation of square. a capital letter is a king
+        ["o", " ", "o", " ", "o", " ", "o", " "],
+        [" ", "o", " ", "o", " ", "o", " ", "o"],
+        ["o", " ", "o", " ", "o", " ", "o", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", "x", " ", "x", " ", "x", " ", "x"],
+        ["x", " ", "x", " ", "x", " ", "x", " "],
+        [" ", "x", " ", "x", " ", "x", " ", "x"],
+    ],
+    test1: [//x, X, o, O, and " " are coded for occupation of square. a capital letter is a king
+        [" ", " ", " ", " ", " ", " ", "o", " "],
+        [" ", " ", " ", " ", " ", "o", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", "o", " ", "O", " ", " ", " ", " "],
+        [" ", " ", "x", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+    ],
+    turn: "x"
+};
+
+function createSVG(symbol) {
+    const xmlns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(xmlns, "svg");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.setAttribute("width", "40");
+    svg.setAttribute("height", "40");
+
+    const circle = document.createElementNS(xmlns, "circle");
+    circle.setAttribute("cx", "50");
+    circle.setAttribute("cy", "50");
+    circle.setAttribute("r", "40");
+    circle.setAttribute("fill", symbol === "x" || symbol === "X" ? "white" : "black");
+    svg.appendChild(circle);
+
+    if (symbol === "X" || symbol === "O") {
+        const crown = document.createElementNS(xmlns, "text");
+        crown.setAttribute("x", "50");
+        crown.setAttribute("y", "60");
+        crown.setAttribute("font-size", "50");
+        crown.setAttribute("text-anchor", "middle");
+        crown.setAttribute("fill", symbol === "X" ? "black" : "white");
+        crown.textContent = "♔";
+        svg.appendChild(crown);
+    }
+
+    return svg;
+}
+
+function drawBoard(){// Draws board as table
+    if(document.getElementById("board")) document.getElementById("board").remove()
+    const table = element("table", "", "board");
+    table.style.borderCollapse = "collapse";
+    for (let rowIdx = 0; rowIdx < game[game.board].length; rowIdx++) {
+        const tableRow = element("tr", "", null, table);
+        for (let colIdx = 0; colIdx < game[game.board][rowIdx].length; colIdx++) {
+            let symbol=game[game.board][rowIdx][colIdx]
+            
+            const tableCell = element("td", "", null, tableRow);
+
+            if (symbol !== " ") {
+                const svgPiece = createSVG(symbol);
+                tableCell.appendChild(svgPiece);
+            }
+
+            const isDarkSquare = (rowIdx + colIdx) % 2 === 1;
+            tableCell.style.backgroundColor = isDarkSquare ? "#8B4513" : "#F5DEB3";
+        }
+    }
+}
+
+drawBoard()
+
+</script>
+
+</body>
+</html>
