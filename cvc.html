@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkers Bot</title>
+<style>
+td{
+    height: 50px ;
+    width: 50px ;
+    text-align: center;
+    padding: 0px;
+    font-size: 30px;
+    vertical-align: middle;
+    border: 1px solid black;
+}
+</style>
+
+</head>
+<body>
+    <button onclick='window.location.replace("cvc.html"); return false;'>test computer against computer</button>
+    <button onclick='window.location.replace("pvc.html"); return false;'>test player against computer</button>
+<script>
+function l(...args){
+    console.log(...args)
+}
+function element(tagName, innerHTML = "", id = null, appendTo = document.body) {
+    const element = document.createElement(tagName);
+    if (id) element.id = id;
+
+    // Handle innerHTML as an array
+    const innerHTMLArray = Array.isArray(innerHTML) ? innerHTML : [innerHTML];
+
+    if (typeof appendTo !== "string") {
+        element.innerHTML = innerHTMLArray[0] || "";
+        appendTo.appendChild(element);
+    } else {
+        const elements = document.querySelectorAll(appendTo);
+        for (let i = 0; i < elements.length; i++) {
+            const newElement = element.cloneNode(true);
+            newElement.innerHTML = innerHTMLArray[i] || "";
+            newElement.id = id ? id + i : null;
+            elements[i].appendChild(newElement);
+        }
+    }
+
+    return element;
+}
+
+function createSVG(symbol) {
+    const xmlns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(xmlns, "svg");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.setAttribute("width", "40");
+    svg.setAttribute("height", "40");
+
+    const circle = document.createElementNS(xmlns, "circle");
+    circle.setAttribute("cx", "50");
+    circle.setAttribute("cy", "50");
+    circle.setAttribute("r", "40");
+    circle.setAttribute("fill", symbol === "x" || symbol === "X" ? "white" : "black");
+    svg.appendChild(circle);
+
+    if (symbol === "X" || symbol === "O") {
+        const crown = document.createElementNS(xmlns, "text");
+        crown.setAttribute("x", "50");
+        crown.setAttribute("y", "60");
+        crown.setAttribute("font-size", "50");
+        crown.setAttribute("text-anchor", "middle");
+        crown.setAttribute("fill", symbol === "X" ? "black" : "white");
+        crown.textContent = "♔";
+        svg.appendChild(crown);
+    }
+
+    return svg;
+}
+
+function drawBoard(){// Draws board as table
+    if(document.getElementById("board")) document.getElementById("board").remove()
+    const table = element("table", "", "board");
+    table.style.borderCollapse = "collapse";
+    for (let rowIdx = 0; rowIdx < game[game.board].length; rowIdx++) {
+        const tableRow = element("tr", "", null, table);
+        for (let colIdx = 0; colIdx < game[game.board][rowIdx].length; colIdx++) {
+            let symbol=game[game.board][rowIdx][colIdx]
+            
+            const tableCell = element("td", "", null, tableRow);
+
+            if (symbol !== " ") {
+                const svgPiece = createSVG(symbol);
+                tableCell.appendChild(svgPiece);
+            }
+
+            const isDarkSquare = (rowIdx + colIdx) % 2 === 1;
+            tableCell.style.backgroundColor = isDarkSquare ? "#8B4513" : "#F5DEB3";
+        }
+    }
+}
+
+let game = {
+    board: "boardStart",//"boardStart",
+    boardStart: [//x, X, o, O, and " " are coded for occupation of square. a capital letter is a king
+        ["o", " ", "o", " ", "o", " ", "o", " "],
+        [" ", "o", " ", "o", " ", "o", " ", "o"],
+        ["o", " ", "o", " ", "o", " ", "o", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", "x", " ", "x", " ", "x", " ", "x"],
+        ["x", " ", "x", " ", "x", " ", "x", " "],
+        [" ", "x", " ", "x", " ", "x", " ", "x"],
+    ],
+    test1: [//x, X, o, O, and " " are coded for occupation of square. a capital letter is a king
+        [" ", " ", " ", " ", " ", " ", "o", " "],
+        [" ", " ", " ", " ", " ", "o", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", "o", " ", "O", " ", " ", " ", " "],
+        [" ", " ", "x", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+    ],
+    test2: [
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", "x", " ", " "],
+        [" ", " ", "X", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", " ", " ", " ", " ", " "],
+        [" ", " ", " ", "O", " ", "x", " ", " "],
+    ],
+    turn: "x"
+};
+let bestMove;
+let MaxDepth=5
+let thinkDelay=300//milliseconds
+let gameState={ turn: "c0", turnCount: 0}
+
+
+function computerMoves(){
+    let moveObject = minimax(game[game.board],0,game.turn=="x")
+    
+    bestMove = moveObject.move
+    if(!bestMove||!bestMove.from){return "gameOver"}
+    let square = game[game.board][bestMove.from[0]][bestMove.from[1]]
+    if(bestMove.kinged) square = square.toUpperCase()
+
+    game[game.board][bestMove.to[0]][bestMove.to[1]] = square
+    game[game.board][bestMove.from[0]][bestMove.from[1]]=" "
+    if(bestMove.takes) for(let i of bestMove.takes){
+        game[game.board][i[0]][i[1]]=" "
+    }
+    
+}
+
+function eval(board){
+    let X=board.flat(1).filter(i=>i=="X").length
+    let x=board.flat(1).filter(i=>i=="x").length
+    let O=board.flat(1).filter(i=>i=="O").length
+    let o=board.flat(1).filter(i=>i=="o").length
+    let eval=50
+
+    if(!o &&!O) return 100
+    if(!x&&!X) return 0
+    eval+= ( (x+X*2.5) - (o+O*2.5) ) * 1
+    for(let i in board){
+        for(let j in board[i]){
+            if(board[i][j]=='x'){
+                eval+=(7-i)**2 /49
+                //!if(i==7&&j!=7)eval+=.1//if on back row discluding the checker piece stuck on the corner.
+                if(board[i+1]&&board[i+1][j+1]&&board[i+1][j+1]==" ")eval+=.01
+                if(board[i+1]&&board[i+1][j-1]&&board[i+1][j-1]==" ")eval+=.01
+            }else if(board[i][j]=='o'){
+                eval-=(i)**2 /49
+                //!if(i==0&&j!=0)eval-=.1//if on back row discluding the checker piece stuck on the corner.
+                if(board[i-1]&&board[i-1][j+1]&&board[i-1][j+1]==" ")eval-=.01
+                if(board[i-1]&&board[i-1][j-1]&&board[i-1][j-1]==" ")eval-=.01
+            }else if(board[i][j]=='O'){
+                if(board[i+1]&&board[i+1][j+1]&&board[i+1][j+1]==" ")eval-=.01
+                if(board[i+1]&&board[i+1][j-1]&&board[i+1][j-1]==" ")eval-=.01
+                if(board[i-1]&&board[i-1][j+1]&&board[i-1][j+1]==" ")eval-=.01
+                if(board[i-1]&&board[i-1][j-1]&&board[i-1][j-1]==" ")eval-=.01
+            }else if(board[i][j]=='X'){
+                if(board[i+1]&&board[i+1][j+1]&&board[i+1][j+1]==" ")eval+=.01
+                if(board[i+1]&&board[i+1][j-1]&&board[i+1][j-1]==" ")eval+=.01
+                if(board[i-1]&&board[i-1][j+1]&&board[i-1][j+1]==" ")eval+=.01
+                if(board[i-1]&&board[i-1][j-1]&&board[i-1][j-1]==" ")eval+=.01
+            }
+        }
+    }
+    if(eval>100) eval=100
+    if(eval<0)eval=0
+    return eval;
+}
+
+function minimax(board,depth,MaximizeOrMinimize, quiescenceSearchMode=0){//maximize is true if need to maximize and false if need to minimize
+    if(depth){
+        let score = eval(board);
+
+        if(score==100)  return {returnedBest: score-depth/10, move: {}};//! make depth not matter as much if actually a forced coninuation with quiescence search
+        if(score==0) return {returnedBest: score+depth/10, move: {}}
+        
+        //quiescence search
+        if(depth==MaxDepth){//it skips over max depth
+            let nextMove = minimax(
+                board,depth+1,MaximizeOrMinimize/*not opposite of this value  since this iteration is skipped as an "managing" iteration */,
+                true
+            )
+            if(nextMove) return nextMove
+            return {returnedBest: score, move: {}}
+        }
+    }
+
+    let best=MaximizeOrMinimize?0:100;
+    let move = {}
+    let legalMoves=[]
+    for(let row in board){
+        for(let col in board[row]){
+            let square=board[row][col]
+            if(MaximizeOrMinimize&&(square=="x"||square=="X") || !MaximizeOrMinimize&&(square=="O"||square=="o")){
+                let dir= MaximizeOrMinimize? -1 : 1
+
+                if(square=="X"||square=="O"){//king moves
+                    if(!quiescenceSearchMode){
+                        checkMove(-1,1, board, row, col,legalMoves,dir)
+                        checkMove(-1,-1,board, row, col,legalMoves,dir)
+                    }
+                    checkJump(-1,1,board,row,col,legalMoves,dir)
+                    checkJump(-1,-1,board,row,col,legalMoves,dir)
+                }
+                //non - king moves
+                if(!quiescenceSearchMode){
+                    checkMove(1, 1,board, row, col,legalMoves,dir)
+                    checkMove(1, -1,board, row, col,legalMoves,dir)
+                }
+                checkJump(1,1,board,row,col,legalMoves,dir)
+                checkJump(1,-1,board,row,col,legalMoves,dir)
+            }
+        }
+    }
+    if(legalMoves.length==0) return {returnedBest: eval(board) }
+    if( legalMoves.some(a=>a.takes) )//taking is compulsary
+       legalMoves = legalMoves.filter(a=>a.takes)
+    
+    for(let i of legalMoves){
+        board[i.to[0]][i.to[1]] = i.kinged ? board[i.from[0]][i.from[1]].toUpperCase() : board[i.from[0]][i.from[1]]
+        board[i.from[0]][i.from[1]] = " "
+        if(i.takes) for(let j of i.takes) board[j[0]][j[1]]=" "
+
+        if(MaximizeOrMinimize){
+            let eval = minimax(board, depth+1, false, quiescenceSearchMode)
+            if(eval.returnedBest > best){
+                best=eval.returnedBest
+                move = i
+            }
+        }
+        else {
+            let eval = minimax(board, depth+1, true, quiescenceSearchMode)
+            if(eval.returnedBest<best){
+                best=eval.returnedBest
+                move = i
+            }
+        }
+
+        board[i.from[0]][i.from[1]] =  i.kinged ? board[i.to[0]][i.to[1]].toLowerCase() : board[i.to[0]][i.to[1]]
+        board[i.to[0]][i.to[1]] = " "
+        if(i.takes) for(let j of i.takes) board[j[0]][j[1]]=j[2]
+    }
+    return {returnedBest: best, move: move};
+}
+
+function moveLegal(yVec,xVec,board,row,col,dir){
+    let square=board[row][col]
+    let y=parseInt(row)+dir*yVec
+    let x=parseInt(col)+xVec
+    if(board[y]&&board[y][x] && board[y][x]==" " ) return 1
+    return 0
+}
+function checkMove(yVec,xVec,board,row,col,legalMoves,dir){
+    let square=board[row][col]
+    let y=parseInt(row)+dir*yVec
+    let x=parseInt(col)+xVec
+    if(board[y]&&board[y][x] &&    board[y][x]==" "     ){
+        if (y==0 && square=="x"||y==7&&square=="o") legalMoves.push({ kinged: true, from: [row,col], to: [y,x]})
+        else legalMoves.push({from: [row,col], to: [y,x]})
+    }
+}
+function checkJump(yVec,xVec,board,row,col,legalMoves,dir){
+    let jumpY=parseInt(row)+2*dir*yVec
+    let jumpX=parseInt(col)+2*xVec
+    let middleX=parseInt(col)+xVec
+    let middleY=parseInt(row)+dir*yVec
+    if(middleY<0||middleY>7) return
+    let jumped=board[middleY][middleX]
+    let original=board[row][col]
+    if(
+        jumped&&jumped.toLowerCase() != original.toLowerCase() && jumped.toLowerCase() !=" "
+        &&board[jumpY]&&board[jumpY][jumpX] &&   board[jumpY][jumpX]== " "
+    ){
+        let kinged= jumpY==0 && original=="x"||jumpY==7&&original=="o" ? true: false
+  
+        board[jumpY][jumpX]= kinged? original.toUpperCase() : original
+        board[row][col] = " "
+        board[middleY][middleX] = " "
+
+        if(legalMoves.length&&JSON.stringify(legalMoves[legalMoves.length-1].to)==JSON.stringify([row,col])){
+            legalMoves[legalMoves.length-1].to=[jumpY,jumpX]
+            legalMoves[legalMoves.length-1].kinged=kinged
+            legalMoves[legalMoves.length-1].takes.push([middleY,middleX,jumped])
+        }
+        else if(legalMoves.length&&legalMoves.some(i=>i.from==[row,col])){
+            legalMoves.push[{kinged: kinged,from: legalMoves.find(i=>i.from==[row,col]).from, to:[jumpY,jumpX], takes:[... legalMoves.find(i=>i.from==[row,col]).takes, [middleY,middleX,jumped]]}]
+        }//!can give an error if returns to any square (miraculously as this is extremely unlikely)
+        else legalMoves.push({kinged:kinged, from:[row,col], to:[jumpY,jumpX], takes:[[middleY,middleX, jumped]]})
+        
+        checkJump(1,1,board,jumpY,jumpX,legalMoves,dir)
+        checkJump(1,-1,board,jumpY,jumpX,legalMoves,dir)
+        
+        if(original=="X"||original=="O"){//king jumps
+            checkJump(-1,1,board,jumpY,jumpX,legalMoves,dir)
+            checkJump(-1,-1,board,jumpY,jumpX,legalMoves,dir)
+        }
+
+        board[jumpY][jumpX]= " "
+        board[row][col]= original
+        board[middleY][middleX]= jumped
+    }
+}
+
+function update(){
+    game.turn = game.turn == "x" ? "o" : "x";
+    drawBoard()
+    gameState.turn = gameState.turn=="c1"? "c0": "c1"
+    ++gameState.turnCount
+}
+async function turnLogic(){
+    if(gameState.turn=="c0"){
+        gameState.turn="delay";
+        let isGameOver=computerMoves();
+        if(isGameOver=="gameOver"){ 
+            element("p","Computer 0 Won the game")
+            return
+        }
+        setTimeout(() => {update()}, thinkDelay)
+    }
+    else if(gameState.turn=="c1"){
+        gameState.turn="delay";
+        let isGameOver=computerMoves();
+        if(isGameOver=="gameOver"){
+            element("p","Computer 1 Won the game")
+            return
+        }
+        setTimeout(() => {update()}, thinkDelay)
+    }
+    requestAnimationFrame(turnLogic)
+}
+
+drawBoard()
+turnLogic()
+    
+
+</script>
+</body>
+</html>
